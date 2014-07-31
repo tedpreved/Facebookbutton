@@ -1,0 +1,32 @@
+apply plugin: 'android-library'
+
+dependencies {
+    compile 'com.android.support:support-v4:19.1.+'
+    compile files('lib/bolts.jar')
+}
+
+android {
+    compileSdkVersion 19
+    buildToolsVersion '19.1.0'
+    defaultConfig {
+        minSdkVersion 14
+        targetSdkVersion 20
+        versionCode 1
+        versionName '1.0'
+    }
+    lintOptions {
+        abortOnError false
+    }
+    sourceSets {
+        main {
+            manifest.srcFile 'AndroidManifest.xml'
+            java.srcDirs = ['src']
+            resourses.srcDirs = ['src']
+            res.srcDirs = ['res']
+        }
+    }
+    productFlavors {
+    }
+    buildTypes {
+    }
+}
