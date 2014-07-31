@@ -15,6 +15,7 @@
     <!--Google+ API-->
     <string name="btn_logout_from_google">Logout from Google</string>
     <string name="btn_revoke_access">Revoke Access</string>
+   <string name="google_play_services_version">5077000</string>
 
 
 

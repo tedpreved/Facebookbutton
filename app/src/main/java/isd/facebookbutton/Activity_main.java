@@ -1,6 +1,8 @@
 package isd.facebookbutton;
 
+import android.app.ProgressDialog;
 import android.content.Intent;
+import android.content.IntentSender;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.os.Bundle;
@@ -20,17 +22,23 @@ import com.facebook.SessionState;
 import com.facebook.UiLifecycleHelper;
 import com.facebook.model.GraphUser;
 import com.facebook.widget.LoginButton;
+import com.google.android.gms.common.ConnectionResult;
+import com.google.android.gms.common.GooglePlayServicesClient;
+import com.google.android.gms.common.SignInButton;
 import com.google.android.gms.plus.PlusClient;
 
 import java.util.Arrays;
 import java.util.List;
 
 
-public class Activity_main extends FragmentActivity  {
+public class Activity_main extends FragmentActivity implements GooglePlayServicesClient.ConnectionCallbacks,GooglePlayServicesClient.OnConnectionFailedListener,View.OnClickListener {
 
-    private LoginButton loginBtn;
+    private LoginButton facebookLoginBtn;
+    private SignInButton googleplusLoginBtn;
     private Button postImageBtn;
     private Button updateStatusBtn;
+
+
 
     private TextView userName;
 
@@ -40,30 +48,45 @@ public class Activity_main extends FragmentActivity  {
 
     private static String message = "Sample status posted from android app";
 
+    private static final int REQUEST_CODE_RESOLVE_ERR = 9000;
+
+    private ProgressDialog mConnectionProgressDialog;
     private PlusClient mPlusClient;
+    private ConnectionResult mConnectionResult;
 
 
     @Override
+    protected void onStart() {
+        super.onStart();
+       mPlusClient.connect();
+    }
+
+    @Override
+    protected void onStop() {
+        super.onStop();
+        mPlusClient.disconnect();
+
+    }
+
+    @Override
     protected void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-
-
+       super.onCreate(savedInstanceState);
 
         uiHelper = new UiLifecycleHelper(this, statusCallback);
         uiHelper.onCreate(savedInstanceState);
 
+        mPlusClient = new PlusClient.Builder(this, this, this)
+              .setActions("http://schemas.google.com/AddActivity", "http://schemas.google.com/BuyActivity")
+              .build();
 
-       // mPlusClient = new PlusClient.Builder(this, this, this)
-       //         .setVisibleActivities("http://schemas.google.com/AddActivity", "http://schemas.google.com/BuyActivity")
-       //         .build();
-
-
+        mConnectionProgressDialog = new ProgressDialog(this);
+        mConnectionProgressDialog.setMessage("Signing in...");
 
         setContentView(R.layout.activity_main);
 
         userName = (TextView) findViewById(R.id.user_name);
-        loginBtn = (LoginButton) findViewById(R.id.fb_login_button);
-        loginBtn.setUserInfoChangedCallback(new LoginButton.UserInfoChangedCallback() {
+        facebookLoginBtn = (LoginButton) findViewById(R.id.fb_login_button);
+        facebookLoginBtn.setUserInfoChangedCallback(new LoginButton.UserInfoChangedCallback() {
             @Override
             public void onUserInfoFetched(GraphUser user) {
                 if (user != null) {
@@ -95,6 +118,11 @@ public class Activity_main extends FragmentActivity  {
         });
 
         buttonsEnabled(false);
+
+
+        googleplusLoginBtn=(SignInButton)findViewById(R.id.gplus_login_button);
+        googleplusLoginBtn.setOnClickListener(this);
+
     }
 
     private Session.StatusCallback statusCallback = new Session.StatusCallback() {
@@ -193,6 +221,12 @@ public class Activity_main extends FragmentActivity  {
     public void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
         uiHelper.onActivityResult(requestCode, resultCode, data);
+
+        if (requestCode == REQUEST_CODE_RESOLVE_ERR && resultCode == RESULT_OK) {
+            mConnectionResult = null;
+            mPlusClient.connect();
+        }
+
     }
 
     @Override
@@ -219,5 +253,64 @@ public class Activity_main extends FragmentActivity  {
             return true;
         }
         return super.onOptionsItemSelected(item);
+    }
+
+
+    @Override
+    public void onConnected(Bundle bundle) {
+        // Все ошибки подключения устранены.
+        mConnectionProgressDialog.dismiss();
+
+
+    }
+
+    @Override
+    public void onDisconnected() {
+        Log.d("test", "disconnected");
+
+    }
+
+    @Override
+    public void onConnectionFailed(ConnectionResult result) {
+        if (mConnectionProgressDialog.isShowing()) {
+            // Пользователь уже нажал кнопку входа. Запустите, чтобы устранить
+            // ошибки подключения. Дождитесь появления onConnected(), чтобы скрыть
+            // диалоговое окно подключения.
+            if (result.hasResolution()) {
+                try {
+                    result.startResolutionForResult(this, REQUEST_CODE_RESOLVE_ERR);
+                } catch (IntentSender.SendIntentException e) {
+                    mPlusClient.connect();
+                }
+            }
+        }
+
+        // Сохраните объект Intent, чтобы запускать действие, когда пользователь
+        // нажимает кнопку входа.
+        mConnectionResult = result;
+
+
+    }
+
+    @Override
+    public void onClick(View view) {
+        Log.d("test","pressed");
+        if (view.getId() == R.id.gplus_login_button) {
+            if (mConnectionResult == null) {
+                mConnectionProgressDialog.show();
+            } else {
+                try {
+                    mConnectionResult.startResolutionForResult(this, REQUEST_CODE_RESOLVE_ERR);
+                } catch (IntentSender.SendIntentException e) {
+                    // Попробуем подключиться ещё раз.
+                    mConnectionResult = null;
+                    mPlusClient.connect();
+                }
+            }
+        }
+
+
+
+
     }
 }
